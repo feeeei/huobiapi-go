@@ -8,11 +8,15 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/url"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/bitly/go-simplejson"
 )
 
 // EncodeQueryString 拼接query字符串
@@ -84,4 +88,23 @@ func DecodeGzip(data []byte) ([]byte, error) {
 	}
 	defer r.Close()
 	return ioutil.ReadAll(r)
+}
+
+// CheckPointer 检查是否为指针对象
+func CheckPointer(obj interface{}) error {
+	rv := reflect.ValueOf(obj)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return fmt.Errorf("non-pointer error %s", reflect.TypeOf(obj))
+	}
+	return nil
+}
+
+// Parse2Obj 将json解析到obj中
+func Parse2Obj(resp *simplejson.Json, obj interface{}) (*simplejson.Json, error) {
+	d, err := resp.Get("data").Encode()
+	if err != nil {
+		return resp, err
+	}
+	err = json.Unmarshal(d, obj)
+	return resp, err
 }

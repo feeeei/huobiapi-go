@@ -10,12 +10,17 @@ import (
 type Params = map[string]interface{}
 
 func init() {
-	config.SetApiHost("api.huobi.pro")
+	config.SetAPIHost("api.huobi.pro")
 }
 
 // UseAWSHost 使用aws域名，在aws网络下速度时延更低
 func UseAWSHost() {
-	config.SetApiHost("api-aws.huobi.pro")
+	config.SetAPIHost("api-aws.huobi.pro")
+}
+
+// SetAPIHost 使用自定义Host
+func SetAPIHost(host string) {
+	config.SetAPIHost(host)
 }
 
 // DebugMode 是否使用Debug模式，打印日志

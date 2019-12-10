@@ -55,6 +55,18 @@ func (client *TradeWSClient) Request(topic string, fields ...map[string]interfac
 	return json, checkResponseError(json)
 }
 
+// HandleRequest 将Response解析到obj中
+func (client *TradeWSClient) HandleRequest(topic string, obj interface{}, fields ...map[string]interface{}) (*simplejson.Json, error) {
+	if err := utils.CheckPointer(obj); err != nil {
+		return nil, err
+	}
+	resp, err := client.Request(topic, fields...)
+	if err != nil {
+		return resp, err
+	}
+	return utils.Parse2Obj(resp, obj)
+}
+
 // Subscribe 订阅主题
 func (client *TradeWSClient) Subscribe(topic string, listener Subscriber, fields ...map[string]interface{}) error {
 	field := getRequestFields(topic, fields...)

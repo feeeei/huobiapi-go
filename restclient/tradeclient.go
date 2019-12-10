@@ -37,6 +37,19 @@ func (client *TradeClient) Get(path string, params ...map[string]interface{}) (*
 	return request("GET", url, p)
 }
 
+// HandleGet 将Response解析到obj中
+func (client *TradeClient) HandleGet(path string, obj interface{}, params ...map[string]interface{}) (*simplejson.Json, error) {
+	if err := utils.CheckPointer(obj); err != nil {
+		return nil, err
+	}
+	resp, err := client.Get(path, params...)
+	if err != nil {
+		return resp, err
+	}
+	return utils.Parse2Obj(resp, obj)
+}
+
+// Post Post同步请求
 func (client *TradeClient) Post(path string, params ...map[string]interface{}) (*simplejson.Json, error) {
 	if err := isValidParams(params); err != nil {
 		return nil, err
@@ -49,6 +62,18 @@ func (client *TradeClient) Post(path string, params ...map[string]interface{}) (
 		p = nil
 	}
 	return request("POST", url, p)
+}
+
+// HandlePost 将Response解析到obj中
+func (client *TradeClient) HandlePost(path string, obj interface{}, params ...map[string]interface{}) (*simplejson.Json, error) {
+	if err := utils.CheckPointer(obj); err != nil {
+		return nil, err
+	}
+	resp, err := client.Post(path, params...)
+	if err != nil {
+		return resp, err
+	}
+	return utils.Parse2Obj(resp, obj)
 }
 
 func (client *TradeClient) signParams(method, path string, params map[string]interface{}) map[string]interface{} {

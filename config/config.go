@@ -12,7 +12,7 @@ var HuobiWsTradeEndpoint *url.URL
 
 var HeartbeatDuration = time.Second * 5
 
-func SetApiHost(host string) {
+func SetAPIHost(host string) {
 	HuobiApiHost = host
 	HuobiRestEndpoint, _ = url.Parse("https://" + host)
 	HuobiWsEndpoint, _ = url.Parse("wss://" + host + "/ws")
