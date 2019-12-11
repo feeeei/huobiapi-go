@@ -14,6 +14,7 @@
 - [x] WebSocket 行情、资产&订单 接口
 - [x] 替换 Host 为 aws 域名
 - [x] WebSocket 断线重连
+- [ ] WebSocket V2版本客户端
 
 ## 安装
 ```
