@@ -15,6 +15,7 @@ type TradeWSClient struct {
 	subscribeWait map[string]chan error
 	responseWait  map[string]chan *simplejson.Json
 	sign          *sign.Sign
+	autoReconnect bool
 }
 
 // NewTradeWSClient WebSocket格式交易Client
@@ -24,17 +25,24 @@ func NewTradeWSClient(accessKeyID, accessKeySecret string) (*TradeWSClient, erro
 		responseWait:  make(map[string]chan *simplejson.Json),
 		sign:          sign.NewSign(accessKeyID, accessKeySecret),
 	}
-	ws, err := newSafeWebSocket(config.HuobiWsTradeEndpoint, client)
-	if err != nil {
+	if err := client.connect(); err != nil {
 		return nil, err
+	}
+	return client, nil
+}
+
+func (client *TradeWSClient) connect() error {
+	ws, err := newSafeWebSocket(config.HuobiWsTradeEndpoint, client, client.autoReconnect)
+	if err != nil {
+		return err
 	}
 	client.ws = ws
 	if err := client.auth(); err != nil {
 		ws.close()
-		return nil, err
+		return err
 	}
 	debug.Println("Trade websocket auth sccessful")
-	return client, nil
+	return nil
 }
 
 // auth 鉴权
@@ -47,7 +55,13 @@ func (client *TradeWSClient) auth() error {
 
 // Request 一次性类请求，阻塞式返回结果
 func (client *TradeWSClient) Request(topic string, fields ...map[string]interface{}) (*simplejson.Json, error) {
-	field := getRequestFields(topic, fields...)
+	var field map[string]interface{}
+	if fields == nil {
+		field = make(map[string]interface{})
+	} else {
+		field = fields[0]
+	}
+	field["topic"] = topic
 	field["op"] = "req"
 	client.ws.sendMessage(field)
 	client.responseWait[topic] = make(chan *simplejson.Json)
@@ -68,9 +82,8 @@ func (client *TradeWSClient) HandleRequest(topic string, obj interface{}, fields
 }
 
 // Subscribe 订阅主题
-func (client *TradeWSClient) Subscribe(topic string, listener Subscriber, fields ...map[string]interface{}) error {
-	field := getRequestFields(topic, fields...)
-	field["op"] = "sub"
+func (client *TradeWSClient) Subscribe(topic string, listener Subscriber) error {
+	field := map[string]interface{}{"topic": topic, "op": "sub"}
 	client.ws.sendMessage(field)
 	client.subscribeWait[topic] = make(chan error)
 	if err := <-client.subscribeWait[topic]; err != nil {
@@ -86,12 +99,26 @@ func (client *TradeWSClient) UnSubscribe(topic string) {
 	client.ws.unsubscribe(topic)
 }
 
+// SetAutoReconnect 设置socket中断时自动重新链接，默认true
+func (client *TradeWSClient) SetAutoReconnect(autoReconnect bool) {
+	client.autoReconnect = autoReconnect
+	client.ws.autoReconnect = autoReconnect
+}
+
+// Reconnect 重新连接，关闭旧链接，建立新链接，重新授权，重新订阅
+func (client *TradeWSClient) Reconnect() {
+	client.ws.reconnect()
+}
+
 // handle 处理消息
 func (client *TradeWSClient) handle(json *simplejson.Json) {
 	op := json.Get("op").MustString()
 	topic := json.Get("topic").MustString()
 
 	switch op {
+	case "ping": // huobi WebSocket v1 接口没有客户端主动发起ping方式
+		ping := json.Get("ts").MustInt64()
+		client.ws.sendMessage(map[string]interface{}{"op": "pong", "ts": ping})
 	case "auth":
 		client.handleError("auth", json)
 	case "sub":
@@ -130,16 +157,12 @@ func (client *TradeWSClient) authParams() map[string]interface{} {
 func checkResponseError(json *simplejson.Json) error {
 	if json.Get("err-code").MustInt() == 0 {
 		return nil
-	} else {
-		return fmt.Errorf(json.Get("err-msg").MustString())
 	}
+	return fmt.Errorf(json.Get("err-msg").MustString())
 }
 
-func getRequestFields(topic string, fields ...map[string]interface{}) map[string]interface{} {
-	var m map[string]interface{}
-	if fields == nil {
-		m = make(map[string]interface{})
-	}
+func getRequestFields(topic string) map[string]interface{} {
+	m := make(map[string]interface{})
 	m["topic"] = topic
 	return m
 }

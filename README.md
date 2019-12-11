@@ -13,7 +13,7 @@
 - [x] RESTful 行情、账户接口
 - [x] WebSocket 行情、资产&订单 接口
 - [x] 替换 Host 为 aws 域名
-- [ ] WebSocket 断线重连
+- [x] WebSocket 断线重连
 
 ## 安装
 ```

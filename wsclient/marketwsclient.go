@@ -12,6 +12,7 @@ import (
 type MarketWSClient struct {
 	ws            *safeWebSocket
 	subscribeWait map[string]chan error
+	autoReconnect bool
 }
 
 // NewMarketWSClient WebSocket格式行情Client
@@ -19,13 +20,20 @@ func NewMarketWSClient() (*MarketWSClient, error) {
 	client := &MarketWSClient{
 		subscribeWait: make(map[string]chan error),
 	}
-	ws, err := newSafeWebSocket(config.HuobiWsEndpoint, client)
-	if err != nil {
+	if err := client.connect(); err != nil {
 		return nil, err
+	}
+	return client, nil
+}
+
+func (client *MarketWSClient) connect() error {
+	ws, err := newSafeWebSocket(config.HuobiWsEndpoint, client, client.autoReconnect)
+	if err != nil {
+		return err
 	}
 	client.ws = ws
 	client.keepAlive()
-	return client, nil
+	return nil
 }
 
 // Subscribe 订阅主题
@@ -46,7 +54,7 @@ func (client *MarketWSClient) Subscribe(topic string, listener Subscriber) error
 	return nil
 }
 
-// Subscribe 订阅主题
+// UnSubscribe 取消订阅主题
 func (client *MarketWSClient) UnSubscribe(topic string) error {
 	if client.ws.subscribers[topic] == nil {
 		return nil
@@ -55,6 +63,17 @@ func (client *MarketWSClient) UnSubscribe(topic string) error {
 	client.ws.sendMessage(map[string]interface{}{"unsub": topic})
 	client.ws.unsubscribe(topic)
 	return nil
+}
+
+// SetAutoReconnect 设置socket中断时自动重新链接，默认true
+func (client *MarketWSClient) SetAutoReconnect(autoReconnect bool) {
+	client.autoReconnect = autoReconnect
+	client.ws.autoReconnect = autoReconnect
+}
+
+// Reconnect 重新连接，关闭旧链接，建立新链接，重新授权，重新订阅
+func (client *MarketWSClient) Reconnect() {
+	client.ws.reconnect()
 }
 
 func (client *MarketWSClient) keepAlive() {
