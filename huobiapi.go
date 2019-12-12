@@ -9,6 +9,18 @@ import (
 
 type Params = map[string]interface{}
 
+// MarketClient REST格式市场client
+type MarketClient = restclient.MarketClient
+
+// TradeClient REST格式交易client
+type TradeClient = restclient.TradeClient
+
+// MarketWSClient WebSocket格式市场client
+type MarketWSClient = wsclient.MarketWSClient
+
+// TradeWSClient WebSocket格式交易client
+type TradeWSClient = wsclient.TradeWSClient
+
 func init() {
 	config.SetAPIHost("api.huobi.pro")
 }
