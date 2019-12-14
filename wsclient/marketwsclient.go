@@ -19,6 +19,7 @@ type MarketWSClient struct {
 func NewMarketWSClient() (*MarketWSClient, error) {
 	client := &MarketWSClient{
 		subscribeWait: make(map[string]chan error),
+		autoReconnect: true,
 	}
 	if err := client.connect(); err != nil {
 		return nil, err
@@ -27,7 +28,7 @@ func NewMarketWSClient() (*MarketWSClient, error) {
 }
 
 func (client *MarketWSClient) connect() error {
-	ws, err := newSafeWebSocket(config.HuobiWsEndpoint, client, client.autoReconnect)
+	ws, err := newSafeWebSocket(config.HuobiWsEndpoint, client, client.autoReconnect, true)
 	if err != nil {
 		return err
 	}
@@ -55,14 +56,14 @@ func (client *MarketWSClient) Subscribe(topic string, listener Subscriber) error
 }
 
 // UnSubscribe 取消订阅主题
-func (client *MarketWSClient) UnSubscribe(topic string) error {
+func (client *MarketWSClient) UnSubscribe(topic string) {
 	if client.ws.subscribers[topic] == nil {
-		return nil
+		return
 	}
 
 	client.ws.sendMessage(map[string]interface{}{"unsub": topic})
 	client.ws.unsubscribe(topic)
-	return nil
+	return
 }
 
 // SetAutoReconnect 设置socket中断时自动重新链接，默认true

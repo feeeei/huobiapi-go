@@ -23,7 +23,8 @@ func NewTradeWSClient(accessKeyID, accessKeySecret string) (*TradeWSClient, erro
 	client := &TradeWSClient{
 		subscribeWait: make(map[string]chan error),
 		responseWait:  make(map[string]chan *simplejson.Json),
-		sign:          sign.NewSign(accessKeyID, accessKeySecret),
+		sign:          sign.NewSign(accessKeyID, accessKeySecret, "2"),
+		autoReconnect: true,
 	}
 	if err := client.connect(); err != nil {
 		return nil, err
@@ -32,7 +33,7 @@ func NewTradeWSClient(accessKeyID, accessKeySecret string) (*TradeWSClient, erro
 }
 
 func (client *TradeWSClient) connect() error {
-	ws, err := newSafeWebSocket(config.HuobiWsTradeEndpoint, client, client.autoReconnect)
+	ws, err := newSafeWebSocket(config.HuobiWsTradeEndpoint, client, client.autoReconnect, true)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func (client *TradeWSClient) Request(topic string, fields ...map[string]interfac
 	client.ws.sendMessage(field)
 	client.responseWait[topic] = make(chan *simplejson.Json)
 	json := <-client.responseWait[topic]
-	return json, checkResponseError(json)
+	return json, client.checkResponseError(json)
 }
 
 // HandleRequest 将Response解析到obj中
@@ -83,6 +84,12 @@ func (client *TradeWSClient) HandleRequest(topic string, obj interface{}, fields
 
 // Subscribe 订阅主题
 func (client *TradeWSClient) Subscribe(topic string, listener Subscriber) error {
+	// 如果已经订阅，直接刷新 listener
+	if client.ws.subscribers[topic] != nil {
+		client.ws.subscribe(topic, listener)
+		return nil
+	}
+
 	field := map[string]interface{}{"topic": topic, "op": "sub"}
 	client.ws.sendMessage(field)
 	client.subscribeWait[topic] = make(chan error)
@@ -116,9 +123,11 @@ func (client *TradeWSClient) handle(json *simplejson.Json) {
 	topic := json.Get("topic").MustString()
 
 	switch op {
-	case "ping": // huobi WebSocket v1 接口没有客户端主动发起ping方式
-		ping := json.Get("ts").MustInt64()
-		client.ws.sendMessage(map[string]interface{}{"op": "pong", "ts": ping})
+	case "pong":
+		// huobi WebSocket v1 接口没有客户端主动发起ping方式
+	case "ping":
+		json.Set("op", "pong")
+		client.ws.sendMessage(json)
 	case "auth":
 		client.handleError("auth", json)
 	case "sub":
@@ -136,7 +145,7 @@ func (client *TradeWSClient) handle(json *simplejson.Json) {
 }
 
 func (client *TradeWSClient) handleError(topic string, json *simplejson.Json) {
-	client.subscribeWait[topic] <- checkResponseError(json)
+	client.subscribeWait[topic] <- client.checkResponseError(json)
 }
 
 func (client *TradeWSClient) handleResponse(topic string, json *simplejson.Json) {
@@ -154,7 +163,7 @@ func (client *TradeWSClient) authParams() map[string]interface{} {
 	return params
 }
 
-func checkResponseError(json *simplejson.Json) error {
+func (client *TradeWSClient) checkResponseError(json *simplejson.Json) error {
 	if json.Get("err-code").MustInt() == 0 {
 		return nil
 	}

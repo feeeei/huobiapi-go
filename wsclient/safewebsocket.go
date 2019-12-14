@@ -21,6 +21,9 @@ type handler interface {
 	connect() error
 	handle(json *simplejson.Json)
 	Subscribe(topic string, listener Subscriber) error
+	UnSubscribe(topic string)
+	Reconnect()
+	SetAutoReconnect(autoReconnect bool)
 }
 
 type safeWebSocket struct {
@@ -30,15 +33,17 @@ type safeWebSocket struct {
 	handler       handler
 	alive         bool
 	autoReconnect bool
+	needDecrypt   bool
 	m             sync.RWMutex
 }
 
-func newSafeWebSocket(u *url.URL, handler handler, autoReconnect bool) (*safeWebSocket, error) {
+func newSafeWebSocket(u *url.URL, handler handler, autoReconnect, needDecrypt bool) (*safeWebSocket, error) {
 	client := safeWebSocket{
 		url:           u,
 		subscribers:   make(map[string]Subscriber),
 		handler:       handler,
 		autoReconnect: autoReconnect,
+		needDecrypt:   needDecrypt,
 	}
 	if err := client.newConnect(); err != nil {
 		return nil, err
@@ -70,7 +75,12 @@ func (client *safeWebSocket) handleMessageLoop() {
 			debug.Println("handle message loop error: ", client.autoReconnect, err)
 			break
 		}
-		message, err := utils.DecodeGzip(rawMessage)
+		var message []byte
+		if client.needDecrypt {
+			message, err = utils.DecodeGzip(rawMessage)
+		} else {
+			message = rawMessage
+		}
 		if err != nil {
 			debug.Println("handle message loop error: ", client.autoReconnect, err)
 			break

@@ -21,6 +21,9 @@ type MarketWSClient = wsclient.MarketWSClient
 // TradeWSClient WebSocket格式交易client
 type TradeWSClient = wsclient.TradeWSClient
 
+//TradeWSV2Client WebSocket格式交易clientV2
+type TradeWSV2Client = wsclient.TradeWSV2Client
+
 func init() {
 	config.SetAPIHost("api.huobi.pro")
 }
@@ -41,21 +44,26 @@ func DebugMode(output bool) {
 }
 
 // NewMarketClient 创建REST行情Client
-func NewMarketClient() (*restclient.MarketClient, error) {
+func NewMarketClient() (*MarketClient, error) {
 	return restclient.NewMarketClient()
 }
 
 // NewTradeClient 创建REST交易Client
-func NewTradeClient(accessKeyID, accessKeySecret string) (*restclient.TradeClient, error) {
+func NewTradeClient(accessKeyID, accessKeySecret string) (*TradeClient, error) {
 	return restclient.NewTradeClient(accessKeyID, accessKeySecret)
 }
 
 // NewMarketWSClient 创建WebSocket行情Client
-func NewMarketWSClient() (*wsclient.MarketWSClient, error) {
+func NewMarketWSClient() (*MarketWSClient, error) {
 	return wsclient.NewMarketWSClient()
 }
 
 // NewTradeWSClient 创建WebSocket交易Client
-func NewTradeWSClient(accessKeyID, accessKeySecret string) (*wsclient.TradeWSClient, error) {
+func NewTradeWSClient(accessKeyID, accessKeySecret string) (*TradeWSClient, error) {
 	return wsclient.NewTradeWSClient(accessKeyID, accessKeySecret)
+}
+
+// NewTradeWSV2Client 创建WebSocket交易Client
+func NewTradeWSV2Client(accessKeyID, accessKeySecret string) (*TradeWSV2Client, error) {
+	return wsclient.NewTradeWSV2Client(accessKeyID, accessKeySecret)
 }

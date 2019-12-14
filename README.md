@@ -7,6 +7,7 @@
 * [RESTful Client](#RESTful-Client)
 * [WebSocket 行情Client](#WebSocket-行情Client)
 * [WebSocket 资产&订单Client](#WebSocket-资产&订单Client)
+* [WebSocket 资产&订单ClientV2](#WebSocket-资产&订单ClientV2)
 * [其它配置](#其它配置)
 
 ## 进度
@@ -14,7 +15,7 @@
 - [x] WebSocket 行情、资产&订单 接口
 - [x] 替换 Host 为 aws 域名
 - [x] WebSocket 断线重连
-- [ ] WebSocket V2版本客户端
+- [x] WebSocket V2版本客户端
 
 ## 安装
 ```
@@ -104,9 +105,26 @@ client.Subscribe("orders.btcusdt.update", func(topic string, json *simplejson.Js
 })
 ```
 
+## WebSocket-资产&订单ClientV2
+```go
+client, _ := huobiapi.NewTradeWSClient("AccessKeyID", "AccessKeySecret")
+
+// 订阅btcusdt订阅清算后成交明细
+client.Subscribe("trade.clearing#usdthusd", func(topic string, json *simplejson.Json) {
+    d, _ := json.Encode()
+    log.Println(string(d))
+})
+// 订阅账户余额变动
+client.Subscribe("accounts.update#0", func(topic string, json *simplejson.Json) {
+    d, _ := json.Encode()
+    log.Println(string(d))
+})
+```
+
 ## 其它配置
 ```
 huobiapi.UseAWSHost()     // 使用aws域名，在aws网络环境下延迟更低
+huobiapi.SetAPIHost("xx") // 使用自定义Host，可以使用未被墙Host来在境内使用
 huobiapi.DebugMode(true)  // 是否使用Debug模式，打印日志
 ```
 

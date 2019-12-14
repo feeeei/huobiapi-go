@@ -18,7 +18,7 @@ type TradeClient struct {
 func NewTradeClient(accessKeyID, accessKeySecret string) (*TradeClient, error) {
 	return &TradeClient{
 		Endpoint: config.HuobiRestEndpoint,
-		sign:     sign.NewSign(accessKeyID, accessKeySecret),
+		sign:     sign.NewSign(accessKeyID, accessKeySecret, "2"),
 	}, nil
 }
 
