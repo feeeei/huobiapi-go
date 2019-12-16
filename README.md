@@ -10,13 +10,6 @@
 * [WebSocket 资产&订单ClientV2](#WebSocket-资产&订单ClientV2)
 * [其它配置](#其它配置)
 
-## 进度
-- [x] RESTful 行情、账户接口
-- [x] WebSocket 行情、资产&订单 接口
-- [x] 替换 Host 为 aws 域名
-- [x] WebSocket 断线重连
-- [x] WebSocket V2版本客户端
-
 ## 安装
 ```
 go get -u https://github.com/feeeei/huobiapi-go
@@ -30,7 +23,7 @@ go get -u https://github.com/feeeei/huobiapi-go
 client, err := huobiapi.NewMarketClient()
 // OR
 // 行情 & 交易 Client
-client, err := NewTradeClient("AccessKeyID", "AccessKeySecret")
+client, err := huobiapi.NewTradeClient("AccessKeyID", "AccessKeySecret")
 
 
 // 获取 accounts 信息
@@ -127,6 +120,13 @@ huobiapi.UseAWSHost()     // 使用aws域名，在aws网络环境下延迟更低
 huobiapi.SetAPIHost("xx") // 使用自定义Host，可以使用未被墙Host来在境内使用
 huobiapi.DebugMode(true)  // 是否使用Debug模式，打印日志
 ```
+
+## 进度
+- [x] RESTful 行情、账户接口
+- [x] WebSocket 行情、资产&订单 接口
+- [x] 替换 Host 为 aws 域名
+- [x] WebSocket 断线重连
+- [x] WebSocket V2版本客户端
 
 ## 感谢
 [leizongmin/huobiapi](https://github.com/leizongmin/huobiapi)

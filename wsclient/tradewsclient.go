@@ -11,7 +11,7 @@ import (
 )
 
 type TradeWSClient struct {
-	ws            *safeWebSocket
+	ws            *huobiWebSocket
 	subscribeWait map[string]chan error
 	responseWait  map[string]chan *simplejson.Json
 	sign          *sign.Sign
@@ -33,7 +33,7 @@ func NewTradeWSClient(accessKeyID, accessKeySecret string) (*TradeWSClient, erro
 }
 
 func (client *TradeWSClient) connect() error {
-	ws, err := newSafeWebSocket(config.HuobiWsTradeEndpoint, client, client.autoReconnect, true)
+	ws, err := newHuobiWebSocket(config.HuobiWsTradeEndpoint, client, client.autoReconnect, true)
 	if err != nil {
 		return err
 	}

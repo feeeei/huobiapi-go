@@ -10,7 +10,7 @@ import (
 )
 
 type MarketWSClient struct {
-	ws            *safeWebSocket
+	ws            *huobiWebSocket
 	subscribeWait map[string]chan error
 	autoReconnect bool
 }
@@ -28,7 +28,7 @@ func NewMarketWSClient() (*MarketWSClient, error) {
 }
 
 func (client *MarketWSClient) connect() error {
-	ws, err := newSafeWebSocket(config.HuobiWsEndpoint, client, client.autoReconnect, true)
+	ws, err := newHuobiWebSocket(config.HuobiWsEndpoint, client, client.autoReconnect, true)
 	if err != nil {
 		return err
 	}

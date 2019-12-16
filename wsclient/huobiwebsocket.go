@@ -17,7 +17,7 @@ type Subscriber func(topic string, json *simplejson.Json)
 type aliver interface {
 	ping() map[string]interface{}
 }
-type handler interface {
+type wsclient interface {
 	connect() error
 	handle(json *simplejson.Json)
 	Subscribe(topic string, listener Subscriber) error
@@ -26,22 +26,22 @@ type handler interface {
 	SetAutoReconnect(autoReconnect bool)
 }
 
-type safeWebSocket struct {
+type huobiWebSocket struct {
 	url           *url.URL
 	ws            *websocket.Conn
 	subscribers   map[string]Subscriber
-	handler       handler
+	wsclient      wsclient
 	alive         bool
 	autoReconnect bool
 	needDecrypt   bool
 	m             sync.RWMutex
 }
 
-func newSafeWebSocket(u *url.URL, handler handler, autoReconnect, needDecrypt bool) (*safeWebSocket, error) {
-	client := safeWebSocket{
+func newHuobiWebSocket(u *url.URL, wsclient wsclient, autoReconnect, needDecrypt bool) (*huobiWebSocket, error) {
+	client := huobiWebSocket{
 		url:           u,
 		subscribers:   make(map[string]Subscriber),
-		handler:       handler,
+		wsclient:      wsclient,
 		autoReconnect: autoReconnect,
 		needDecrypt:   needDecrypt,
 	}
@@ -51,7 +51,7 @@ func newSafeWebSocket(u *url.URL, handler handler, autoReconnect, needDecrypt bo
 	return &client, nil
 }
 
-func (client *safeWebSocket) newConnect() error {
+func (client *huobiWebSocket) newConnect() error {
 	client.m.Lock()
 	defer client.m.Unlock()
 	ws, response, err := websocket.DefaultDialer.Dial(client.url.String(), nil)
@@ -68,7 +68,7 @@ func (client *safeWebSocket) newConnect() error {
 	return nil
 }
 
-func (client *safeWebSocket) handleMessageLoop() {
+func (client *huobiWebSocket) handleMessageLoop() {
 	for true {
 		_, rawMessage, err := client.ws.ReadMessage()
 		if err != nil {
@@ -87,14 +87,14 @@ func (client *safeWebSocket) handleMessageLoop() {
 		}
 		debug.Println("Receive:", string(message))
 		json, _ := simplejson.NewJson(message)
-		client.handler.handle(json)
+		client.wsclient.handle(json)
 	}
 	if client.autoReconnect {
 		client.reconnect()
 	}
 }
 
-func (client *safeWebSocket) keepAlive(duration time.Duration, heartbeat aliver) {
+func (client *huobiWebSocket) keepAlive(duration time.Duration, heartbeat aliver) {
 	go func() {
 		for client.alive {
 			err := client.sendMessage(heartbeat.ping())
@@ -109,21 +109,21 @@ func (client *safeWebSocket) keepAlive(duration time.Duration, heartbeat aliver)
 }
 
 // subscribe 注册订阅
-func (client *safeWebSocket) subscribe(topic string, listener Subscriber) {
+func (client *huobiWebSocket) subscribe(topic string, listener Subscriber) {
 	client.m.Lock()
 	defer client.m.Unlock()
 	client.subscribers[topic] = listener
 }
 
 // unsubscribe 取消订阅
-func (client *safeWebSocket) unsubscribe(topic string) {
+func (client *huobiWebSocket) unsubscribe(topic string) {
 	client.m.Lock()
 	defer client.m.Unlock()
 	delete(client.subscribers, topic)
 }
 
 // sendMessage 通过Websocket发送request
-func (client *safeWebSocket) sendMessage(message interface{}) error {
+func (client *huobiWebSocket) sendMessage(message interface{}) error {
 	b, err := json.Marshal(message)
 	if err != nil {
 		return nil
@@ -132,7 +132,7 @@ func (client *safeWebSocket) sendMessage(message interface{}) error {
 	return client.send(b)
 }
 
-func (client *safeWebSocket) send(b []byte) error {
+func (client *huobiWebSocket) send(b []byte) error {
 	client.m.Lock()
 	defer client.m.Unlock()
 	err := client.ws.WriteMessage(websocket.TextMessage, b)
@@ -143,18 +143,18 @@ func (client *safeWebSocket) send(b []byte) error {
 }
 
 // reconnect 循环式重新链接，如果中途失败会sleep 1s之后继续尝试
-func (client *safeWebSocket) reconnect() {
+func (client *huobiWebSocket) reconnect() {
 	success := false
 	for !success {
 		debug.Println("Begin reconnecting")
 		time.Sleep(time.Second * 1)
 		client.close()
-		if err := client.handler.connect(); err != nil {
+		if err := client.wsclient.connect(); err != nil {
 			debug.Println("Reconneting error:", err)
 			continue
 		}
 		for topic := range client.subscribers {
-			if err := client.handler.Subscribe(topic, client.subscribers[topic]); err != nil {
+			if err := client.wsclient.Subscribe(topic, client.subscribers[topic]); err != nil {
 				debug.Println("Reconneting subscribe error:", err)
 				continue
 			}
@@ -165,7 +165,7 @@ func (client *safeWebSocket) reconnect() {
 	return
 }
 
-func (client *safeWebSocket) close() {
+func (client *huobiWebSocket) close() {
 	client.m.Lock()
 	defer client.m.Unlock()
 	client.alive = false
