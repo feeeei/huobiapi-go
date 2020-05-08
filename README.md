@@ -100,7 +100,7 @@ client.Subscribe("orders.btcusdt.update", func(topic string, json *simplejson.Js
 
 ## WebSocket-资产&订单ClientV2
 ```go
-client, _ := huobiapi.NewTradeWSClient("AccessKeyID", "AccessKeySecret")
+client, _ := huobiapi.NewTradeWSV2Client("AccessKeyID", "AccessKeySecret")
 
 // 订阅btcusdt订阅清算后成交明细
 client.Subscribe("trade.clearing#usdthusd", func(topic string, json *simplejson.Json) {
